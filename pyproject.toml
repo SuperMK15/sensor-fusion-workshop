@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sensor_fusion_workshop"
+version = "0.1.0"
+description = "A workshop for learning Bayesian Sensor Fusion from the ground up."
+authors = [
+    {name = "Manasva Katyal"}
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "matplotlib>=3.4.0",
+    "scipy>=1.7.0",
+]
+requires-python = ">=3.8"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
