@@ -34,12 +34,15 @@ The foundation of all estimation. Uses a discrete grid (histogram) to represent 
 - **Concepts:** Prediction (Motion Update), Correction (Measurement Update), Normalization.
 - **Run:** `python 1_bayes_filter/main.py`
 - **View:** Plots in `1_bayes_filter/plots`, each run gets its own timestamped plot.
-- **Edit:** Constants in the `CONFIG`section of the code will change the behaviour of the filter.
+- **Edit:** Constants in the `CONFIG`section of the `1_bayes_filter/main.py` code will change the behaviour of the filter.
 
 ### 2. Kalman Filter (Linear)
 *Status: [COMING SOON]*
 - Moving from discrete grids to Continuous Gaussians.
 - **Concepts:** State Transition Matrix ($F$), Control Matrix ($B$), Kalman Gain ($K$).
+- **Run:** `python 2_kalman_filter/main.py`
+- **View:** Plots in `2_kalman_filter/plots`, each run gets its own timestamped plot.
+- **Edit:** Constants in the `CONFIG` section of the `2_kalman_filter/main.py` code will change the behaviour of the filter.
 
 ### 3. Extended Kalman Filter (EKF)
 *Status: [COMING SOON]*
