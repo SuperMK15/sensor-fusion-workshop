@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from aekf_filter import AdditiveEKF
+from aekf import AdditiveEKF
 from simulation import DroneSimulation3D
 
 # --- CONFIG ---

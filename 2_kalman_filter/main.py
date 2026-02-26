@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from filter import KalmanFilter
+from kalman_filter import KalmanFilter
 from simulation import RobotSimulation2D
 
 # --- CONFIG ---

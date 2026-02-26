@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from datetime import datetime
 from simulation import RobotSimulation
-from filter import DiscreteBayesFilter
+from bayes_filter import DiscreteBayesFilter
 
 # --- CONFIG ---
 NUM_STEPS = 5 # Number of time steps to simulate
