@@ -31,18 +31,18 @@ This repository provides a step-by-step implementation of sensor fusion algorith
 
 ### 1. Bayes Filter (Discrete)
 The foundation of all estimation. Uses a discrete grid (histogram) to represent the probability distribution. 
-- **Concepts:** Prediction (Motion Update), Correction (Measurement Update), Normalization.
+- **Concepts:** Prediction (Motion Update), Correction (Measurement Update), Normalization. Read the theory in [1_bayes_filter/1_Bayes_Filter_Theory.pdf](./1_bayes_filter/1_Bayes_Filter_Theory.pdf).
 - **Run:** `python 1_bayes_filter/main.py`
 - **View:** Plots in `1_bayes_filter/plots`, each run gets its own timestamped plot.
-- **Edit:** Constants in the `CONFIG`section of the `1_bayes_filter/main.py` code will change the behaviour of the filter.
+- **Edit:** Constants in the `CONFIG` section of the [`1_bayes_filter/main.py`](./1_bayes_filter/main.py) code will change the behaviour of the filter.
 
 ### 2. Kalman Filter (Linear)
 *Status: [COMING SOON]*
 - Moving from discrete grids to Continuous Gaussians.
-- **Concepts:** State Transition Matrix ($F$), Control Matrix ($B$), Kalman Gain ($K$).
+- **Concepts:** State Transition Matrix ($F$), Control Matrix ($B$), Kalman Gain ($K$). Read the theory in [2_kalman_filter/2_Kalman_Filter_Theory.pdf](./2_kalman_filter/2_Kalman_Filter_Theory.pdf)
 - **Run:** `python 2_kalman_filter/main.py`
 - **View:** Plots in `2_kalman_filter/plots`, each run gets its own timestamped plot.
-- **Edit:** Constants in the `CONFIG` section of the `2_kalman_filter/main.py` code will change the behaviour of the filter.
+- **Edit:** Constants in the `CONFIG` section of the [`2_kalman_filter/main.py`](./2_kalman_filter/main.py) code will change the behaviour of the filter.
 
 ### 3. Extended Kalman Filter (EKF)
 *Status: [COMING SOON]*
