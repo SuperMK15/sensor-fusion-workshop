@@ -37,7 +37,6 @@ The foundation of all estimation. Uses a discrete grid (histogram) to represent 
 - **Edit:** Constants in the `CONFIG` section of the [`1_bayes_filter/main.py`](./1_bayes_filter/main.py) code will change the behaviour of the filter.
 
 ### 2. Kalman Filter (Linear)
-*Status: [COMING SOON]*
 - Moving from discrete grids to Continuous Gaussians.
 - **Concepts:** State Transition Matrix ($F$), Control Matrix ($B$), Kalman Gain ($K$). Read the theory in [2_kalman_filter/2_Kalman_Filter_Theory.pdf](./2_kalman_filter/2_Kalman_Filter_Theory.pdf)
 - **Run:** `python 2_kalman_filter/main.py`
@@ -45,6 +44,8 @@ The foundation of all estimation. Uses a discrete grid (histogram) to represent 
 - **Edit:** Constants in the `CONFIG` section of the [`2_kalman_filter/main.py`](./2_kalman_filter/main.py) code will change the behaviour of the filter.
 
 ### 3. Extended Kalman Filter (EKF)
-*Status: [COMING SOON]*
 - Handling non-linear motion and sensor models using Taylor Series expansion.
-- **Concepts:** Jacobians, Linearization, Real-world noise models.
+- **Concepts:** Jacobians, Linearization, Real-world noise models. Read the theory in [3_ekf/3_EKF_Theory.pdf](./3_ekf/3_EKF_Theory)
+- **Run:** `python 3_ekf/main.py`
+- **View:** Plots in `3_ekf/plots`, each run get its own timestamped plot.
+- **Edit:** Constants in the `CONFIG` section of the [`3_ekf/main.py`](./3_ekf/main.py) code will change the behaviour of the filter.
