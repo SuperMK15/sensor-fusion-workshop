@@ -15,41 +15,65 @@ class AdditiveEKF:
         self.R_acc = np.eye(3) * accel_var  # Accel noise
         self.R_mag = np.eye(3) * mag_var    # Mag noise
 
-    def f_kinematics(self, x, u):
+    def _f_state_transition(self, x, u):
         """Nonlinear state transition function f(x, u)"""
         phi, theta, psi = x
         p, q, r = u
         
-        phi_dot = p + q * np.sin(phi) * np.tan(theta) + r * np.cos(phi) * np.tan(theta)
-        theta_dot = q * np.cos(phi) - r * np.sin(phi)
-        psi_dot = q * np.sin(phi) / np.cos(theta) + r * np.cos(phi) / np.cos(theta)
+        phi_rate = p + q * np.sin(phi) * np.tan(theta) + r * np.cos(phi) * np.tan(theta)
+        theta_rate = q * np.cos(phi) - r * np.sin(phi)
+        psi_rate = q * np.sin(phi) / np.cos(theta) + r * np.cos(phi) / np.cos(theta)
         
-        return np.array([phi_dot, theta_dot, psi_dot])
+        rates = np.array([phi_rate, theta_rate, psi_rate])
+        return x + rates * self.dt # First order discretization
 
     def predict(self, u):
         """Phase A: Predict using Gyro"""
-        # 1. State Prediction
-        rates = self.f_kinematics(self.x, u)
-        self.x = self.x + rates * self.dt
+        # Get current state for use in Jacobian (x_{t-1})
+        phi, theta, psi = self.x
         
-        # Wrap yaw
+        # 1. State Prediction
+        self.x = self._f_state_transition(self.x, u)
+        
+        # Wrap all angles to [-pi, pi]
+        self.x[0] = (self.x[0] + np.pi) % (2 * np.pi) - np.pi
+        self.x[1] = (self.x[1] + np.pi) % (2 * np.pi) - np.pi
         self.x[2] = (self.x[2] + np.pi) % (2 * np.pi) - np.pi
         
         # 2. Jacobian F_t (Analytical approximation: I + df/dx * dt)
-        phi, theta, psi = self.x
         p, q, r = u
-        
-        # Partial derivatives of rates w.r.t phi, theta, psi
-        F_jac = np.eye(3)
-        # (Simplified Jacobian calculation for brevity - a real flight controller uses full derivatives)
-        F_jac[0, 0] += (q * np.cos(phi) * np.tan(theta) - r * np.sin(phi) * np.tan(theta)) * self.dt
-        F_jac[0, 1] += (q * np.sin(phi) / np.cos(theta)**2 + r * np.cos(phi) / np.cos(theta)**2) * self.dt
-        F_jac[1, 0] += (-q * np.sin(phi) - r * np.cos(phi)) * self.dt
-        F_jac[2, 0] += (q * np.cos(phi) / np.cos(theta) - r * np.sin(phi) / np.cos(theta)) * self.dt
-        F_jac[2, 1] += (q * np.sin(phi) * np.tan(theta) / np.cos(theta) + r * np.cos(phi) * np.tan(theta) / np.cos(theta)) * self.dt
 
+        # Precompute trigonometric terms for Jacobian
+        sphi = np.sin(phi)
+        cphi = np.cos(phi)
+        ttheta = np.tan(theta)
+        ctheta = np.cos(theta)
+        sectheta = 1.0 / ctheta
+        sec2theta = sectheta**2
+
+        # Compute the Jacobian of the rates with respect to the state variables (g function in the notes)
+        rates_jacobian = np.zeros((3, 3))
+
+        # ---- Row 1 (phi) ----
+        rates_jacobian[0, 0] += (q * cphi * ttheta - r * sphi * ttheta)
+        rates_jacobian[0, 1] += ((q * sphi + r * cphi) * sec2theta)
+        rates_jacobian[0, 2] += 0
+
+        # ---- Row 2 (theta) ----
+        rates_jacobian[1, 0] += (-q * sphi - r * cphi)
+        rates_jacobian[1, 1] += 0
+        rates_jacobian[1, 2] += 0
+
+        # ---- Row 3 (psi) ----
+        rates_jacobian[2, 0] += ((q * cphi - r * sphi) * sectheta)
+        rates_jacobian[2, 1] += ((q * sphi + r * cphi) * sectheta * ttheta)
+        rates_jacobian[2, 2] += 0
+        
+        # Final F_t Jacobian
+        F_t = np.eye(3) + (rates_jacobian * self.dt) # Since we are using first order discretization, F_t = I + dg/dx * dt
+        
         # 3. Covariance Prediction
-        self.P = F_jac @ self.P @ F_jac.T + self.Q
+        self.P = F_t @ self.P @ F_t.T + self.Q
 
     def update_accel(self, z_acc):
         """Phase B: Correct using Accelerometer"""

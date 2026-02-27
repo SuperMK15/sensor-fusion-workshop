@@ -11,7 +11,7 @@ GYRO_DT = 0.01      # Gyro / Prediction timestep (seconds) - 100Hz
 
 # Sensor Rates
 ACCEL_RATIO = 1 # Default: 1 Accel update every 1 Gyro step (Standard 6-DOF IMU behavior)
-MAG_RATIO = 2   # Default: 1 Mag update every 5 Gyro steps (20Hz magnetometer)
+MAG_RATIO = 5   # Default: 1 Mag update every 5 Gyro steps (20Hz magnetometer)
 
 # Gyro Bias (constant drift added to gyro measurements, unknown to EKF)
 GYRO_BIAS_X = 0.02  # (rad/s)
