@@ -74,6 +74,9 @@ class AdditiveEKF:
 
     def update_mag(self, z_mag):
         """Phase B: Correct using Magnetometer"""
+        # Normalize magnetometer measurement
+        z_mag = z_mag / np.linalg.norm(z_mag)
+        
         # h_mag(x)
         R_x = np.array([[1, 0, 0], [0, np.cos(self.x[0]), -np.sin(self.x[0])], [0, np.sin(self.x[0]), np.cos(self.x[0])]])
         R_y = np.array([[np.cos(self.x[1]), 0, np.sin(self.x[1])], [0, 1, 0], [-np.sin(self.x[1]), 0, np.cos(self.x[1])]])
