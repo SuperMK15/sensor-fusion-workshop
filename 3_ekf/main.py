@@ -1,8 +1,10 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 from datetime import datetime
 from aekf import AdditiveEKF
+from mekf import MultiplicativeEKF
 from simulation import DroneSimulation3D
 
 # --- CONFIG ---
@@ -31,12 +33,20 @@ MAG_CORRECTION_ENABLED = True
 SIM_SEED = None # Set to an int for reproducibility, or None for random
 # --- CONFIG ---
 
-def run_aekf_demo():
+def run_demo(filter_type):
     # Setup Random Seed
     seed = SIM_SEED if SIM_SEED is not None else int(np.random.SeedSequence().entropy) % (2**32)
     np.random.seed(seed)
-        
-    print("Running AEKF Demo with the following configuration:")
+
+    print(f"Running Demo with the following configuration:")
+
+    if filter_type == "aekf":
+        print("Filter Type: Additive EKF (AEKF)")
+    elif filter_type == "mekf":
+        print("Filter Type: Multiplicative EKF (MEKF)")
+    else:
+        raise ValueError("Invalid filter type. Choose 'aekf' or 'mekf'.")
+
     print(f"TOTAL_TIME: {TOTAL_TIME} s")
     print(f"GYRO_DT: {GYRO_DT} s")
     print(f"ACCEL_RATIO: {ACCEL_RATIO} (1 Accel update every {ACCEL_RATIO} Gyro steps)")
@@ -52,7 +62,7 @@ def run_aekf_demo():
     num_steps = int(TOTAL_TIME / GYRO_DT)
 
     # --- PLOT DIRECTORY SETUP ---
-    # Get the directory where aekf_main.py is physically located
+    # Get the directory where main.py is physically located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Create the 'plots' folder relative to this script's directory
@@ -67,10 +77,18 @@ def run_aekf_demo():
                             gyro_var=GYRO_NOISE_VAR,
                             accel_var=ACCEL_NOISE_VAR,
                             mag_var=MAG_NOISE_VAR)
-    ekf = AdditiveEKF(GYRO_DT,
-                      gyro_var=GYRO_NOISE_VAR,
-                      accel_var=ACCEL_NOISE_VAR,
-                      mag_var=MAG_NOISE_VAR)
+    
+    # Conditional Instantiation
+    if filter_type == "mekf":
+        ekf = MultiplicativeEKF(GYRO_DT,
+                                gyro_var=GYRO_NOISE_VAR,
+                                accel_var=ACCEL_NOISE_VAR,
+                                mag_var=MAG_NOISE_VAR)
+    else:
+        ekf = AdditiveEKF(GYRO_DT,
+                          gyro_var=GYRO_NOISE_VAR,
+                          accel_var=ACCEL_NOISE_VAR,
+                          mag_var=MAG_NOISE_VAR)
 
     # Storage for plotting
     history = {"t": [], "true_euler": [], "ekf_euler": [], "z_acc": [], "z_mag": [], "u_gyro": []}
@@ -153,7 +171,7 @@ def run_aekf_demo():
     axs[1].plot(t, est_e[:, 1], 'g--', label="EKF Pitch", linewidth=2)
     axs[1].plot(t, true_e[:, 2], 'b-', label="True Yaw", linewidth=2)
     axs[1].plot(t, est_e[:, 2], 'b--', label="EKF Yaw", linewidth=2)
-    axs[1].set_title("AEKF 3D Attitude Estimation")
+    axs[1].set_title(f"{'MEKF' if filter_type == 'mekf' else 'AEKF'} 3D Attitude Estimation")
     axs[1].set_ylabel("Angle (Degrees)")
     axs[1].legend(loc='upper right', ncol=3)
     axs[1].grid(True, linestyle=':', alpha=0.6)
@@ -191,7 +209,7 @@ def run_aekf_demo():
     plt.tight_layout()
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_path = os.path.join(plot_dir, f"aekf_results_{timestamp}.png")
+    save_path = os.path.join(plot_dir, f"{filter_type}_results_{timestamp}.png")
     plt.savefig(save_path)
 
     # Calculate final error in degrees
@@ -206,4 +224,9 @@ def run_aekf_demo():
     plt.close()
 
 if __name__ == "__main__":
-    run_aekf_demo()
+    parser = argparse.ArgumentParser(description="Run Drone EKF Demo")
+    parser.add_argument("--filter", type=str, choices=["aekf", "mekf"], default="aekf",
+                        help="Choose the filter type (default: aekf)")
+    args = parser.parse_args()
+    
+    run_demo(args.filter)
