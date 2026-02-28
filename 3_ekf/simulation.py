@@ -1,13 +1,24 @@
 import numpy as np
+from enum import Enum, auto
+
+class SimMode(Enum):
+    OSCILLATE = auto()    # Standard flight dynamics
+    CONSTANT_ROT = auto() # Constant rotation rates (can trigger Gimbal Lock!)
 
 class DroneSimulation3D:
     def __init__(self, dt, 
+                 mode=SimMode.OSCILLATE,
+                 const_rates=np.array([0.1, 0.5, 0.1]),
+                 osc_amplitudes=np.array([0.5, 0.3, 0.2]),
                  gyro_bias=np.array([0.02, -0.01, 0.005]), 
                  vibration_var=0.0005,
                  gyro_var=0.0001,
                  accel_var=0.005,
                  mag_var=0.01):
         self.dt = dt
+        self.mode = mode
+        self.const_rates = const_rates
+        self.osc_amplitudes = osc_amplitudes
         self.t = 0.0
         self.g = 9.81
         self.b_earth = np.array([1.0, 0.0, 0.0])
@@ -21,8 +32,9 @@ class DroneSimulation3D:
         self.accel_std = np.sqrt(accel_var)
         self.mag_std = np.sqrt(mag_var)
         
-        # True State: [phi (roll), theta (pitch), psi (yaw)]
-        self.true_x = np.zeros(3)
+        # True State: Use Quaternion internally to avoid Gimbal Lock
+        self.true_x = np.zeros(3) # [Roll, Pitch, Yaw]
+        self.true_q = np.array([1.0, 0.0, 0.0, 0.0])
 
     def _get_rotation_matrix(self, phi, theta, psi):
         """Body to Inertial frame rotation matrix (ZYX Euler)"""
@@ -35,25 +47,36 @@ class DroneSimulation3D:
         """Simulate true dynamic motion with unmodeled vibration"""
         self.t += self.dt
         
-        # Interesting flight dynamics
-        p = 0.5 * np.cos(self.t)
-        q = 0.3 * np.sin(self.t)
-        r = 0.2
+        if self.mode == SimMode.CONSTANT_ROT:
+            p, q, r = self.const_rates
+        else:
+            p = self.osc_amplitudes[0] * np.cos(self.t)
+            q = self.osc_amplitudes[1] * np.sin(self.t)
+            r = self.osc_amplitudes[2]
         
-        # KINEMATIC DECOUPLING: Add vibration/turbulence the EKF can't see
-        p += np.random.normal(0, self.vibration_std)
-        q += np.random.normal(0, self.vibration_std)
-        r += np.random.normal(0, self.vibration_std)
+        p_noisy = p + np.random.normal(0, self.vibration_std)
+        q_noisy = q + np.random.normal(0, self.vibration_std)
+        r_noisy = r + np.random.normal(0, self.vibration_std)
         
-        phi, theta, psi = self.true_x
-        phi_dot = p + q * np.sin(phi) * np.tan(theta) + r * np.cos(phi) * np.tan(theta)
-        theta_dot = q * np.cos(phi) - r * np.sin(phi)
-        psi_dot = q * np.sin(phi) / np.cos(theta) + r * np.cos(phi) / np.cos(theta)
+        # Update True Quaternion (Singularity-Free Integration)
+        w, x, y, z = self.true_q
+        q_dot = 0.5 * np.array([
+            -x*p_noisy - y*q_noisy - z*r_noisy,
+             w*p_noisy + y*r_noisy - z*q_noisy,
+             w*q_noisy - x*r_noisy + z*p_noisy,
+             w*r_noisy + x*q_noisy - y*p_noisy
+        ])
         
-        self.true_x += np.array([phi_dot, theta_dot, psi_dot]) * self.dt
-        self.true_x[2] = (self.true_x[2] + np.pi) % (2 * np.pi) - np.pi
+        self.true_q += q_dot * self.dt
+        self.true_q /= np.linalg.norm(self.true_q)
         
-        return self.true_x, np.array([p, q, r])
+        # Extract Euler Angles for sensor methods (Normalized to -pi, pi)
+        qw, qx, qy, qz = self.true_q
+        self.true_x[0] = np.arctan2(2*(qw*qx + qy*qz), 1 - 2*(qx**2 + qy**2))
+        self.true_x[1] = np.arcsin(np.clip(2*(qw*qy - qz*qx), -1.0, 1.0))
+        self.true_x[2] = np.arctan2(2*(qw*qz + qx*qy), 1 - 2*(qy**2 + qz**2))
+        
+        return self.true_x.copy(), np.array([p, q, r])
 
     def get_gyro(self, true_rates):
         """Gyro returns rates with persistent BIAS + Noise"""

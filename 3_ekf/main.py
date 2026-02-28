@@ -5,7 +5,7 @@ import argparse
 from datetime import datetime
 from aekf import AdditiveEKF
 from mekf import MultiplicativeEKF
-from simulation import DroneSimulation3D
+from simulation import DroneSimulation3D, SimMode
 
 # --- CONFIG ---
 TOTAL_TIME = 50.0   # Total simulation time (seconds)
@@ -21,31 +21,30 @@ GYRO_BIAS_Y = -0.01 # (rad/s)
 GYRO_BIAS_Z = 0.005 # (rad/s)
 
 # Noise Variances
-GYRO_NOISE_VAR = 0.0001  # Variance of Gyro noise (rad/s)^2 - acts as Q matrix
-ACCEL_NOISE_VAR = 0.005  # Variance of Accel noise (m/s^2)^2 - acts as R_acc matrix
-MAG_NOISE_VAR = 0.01     # Variance of Mag noise (normalized)^2 - acts as R_mag matrix
-SIM_NOISE_VAR = 0.0005   # Variance of physical disturbance added to true state (for realism)
+GYRO_NOISE_VAR = 0.00001  # Variance of Gyro noise (rad/s)^2 - acts as Q matrix
+ACCEL_NOISE_VAR = 0.0005  # Variance of Accel noise (m/s^2)^2 - acts as R_acc matrix
+MAG_NOISE_VAR = 0.001     # Variance of Mag noise (normalized)^2 - acts as R_mag matrix
+SIM_NOISE_VAR = 0.00005   # Variance of physical disturbance added to true state (for realism)
 
 # Toggles for Fusion
 ACCEL_CORRECTION_ENABLED = True
 MAG_CORRECTION_ENABLED = True
 
+# Simulation Rates
+CONST_ROT_RATES = np.array([0.2, 0.3, 0.1]) # p, q, r for CONSTANT_ROT mode
+OSC_AMPLITUDES = np.array([0.5, 0.3, 0.2])  # p, q, r amplitudes for OSCILLATE mode
+
 SIM_SEED = None # Set to an int for reproducibility, or None for random
 # --- CONFIG ---
 
-def run_demo(filter_type):
+def run_demo(filter_type, sim_mode):
     # Setup Random Seed
     seed = SIM_SEED if SIM_SEED is not None else int(np.random.SeedSequence().entropy) % (2**32)
     np.random.seed(seed)
 
     print(f"Running Demo with the following configuration:")
-
-    if filter_type == "aekf":
-        print("Filter Type: Additive EKF (AEKF)")
-    elif filter_type == "mekf":
-        print("Filter Type: Multiplicative EKF (MEKF)")
-    else:
-        raise ValueError("Invalid filter type. Choose 'aekf' or 'mekf'.")
+    print(f"Filter Type: {'Multiplicative EKF (MEKF)' if filter_type == 'mekf' else 'Additive EKF (AEKF)'}")
+    print(f"Sim Mode: {sim_mode.name}")
 
     print(f"TOTAL_TIME: {TOTAL_TIME} s")
     print(f"GYRO_DT: {GYRO_DT} s")
@@ -62,16 +61,16 @@ def run_demo(filter_type):
     num_steps = int(TOTAL_TIME / GYRO_DT)
 
     # --- PLOT DIRECTORY SETUP ---
-    # Get the directory where main.py is physically located
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Create the 'plots' folder relative to this script's directory
     plot_dir = os.path.join(script_dir, "plots")
     os.makedirs(plot_dir, exist_ok=True)
     # -----------------------------
 
     # Initialize simulation and filter
     sim = DroneSimulation3D(GYRO_DT,
+                            mode=sim_mode,
+                            const_rates=CONST_ROT_RATES,
+                            osc_amplitudes=OSC_AMPLITUDES,
                             gyro_bias=np.array([GYRO_BIAS_X, GYRO_BIAS_Y, GYRO_BIAS_Z]),
                             vibration_var=SIM_NOISE_VAR,
                             gyro_var=GYRO_NOISE_VAR,
@@ -130,7 +129,6 @@ def run_demo(filter_type):
         history["z_acc"].append(acc_log)
         history["z_mag"].append(mag_log)
 
-        # Adjusted print frequency for 100Hz
         if i % 100 == 0:
             tr = np.degrees(true_euler)
             est = np.degrees(ekf.x)
@@ -148,10 +146,26 @@ def run_demo(filter_type):
     acc = np.array(history["z_acc"])
     mag = np.array(history["z_mag"])
     
-    # Calculate absolute error in degrees
-    err = np.abs(true_e - est_e)
-    err[:, 2] = (err[:, 2] + 180) % 360 - 180
-    err = np.abs(err)
+    # Robust Error Calculation
+    def euler_to_R(angles_deg):
+        r, p, y = np.radians(angles_deg[:, 0]), np.radians(angles_deg[:, 1]), np.radians(angles_deg[:, 2])
+        cx, sx, cy, sy, cz, sz = np.cos(r), np.sin(r), np.cos(p), np.sin(p), np.cos(y), np.sin(y)
+        R = np.zeros((len(r), 3, 3))
+        R[:,0,0], R[:,0,1], R[:,0,2] = cy*cz, sx*sy*cz - cx*sz, cx*sy*cz + sx*sz
+        R[:,1,0], R[:,1,1], R[:,1,2] = cy*sz, sx*sy*sz + cx*cz, cx*sy*sz - sx*cz
+        R[:,2,0], R[:,2,1], R[:,2,2] = -sy, sx*cy, cx*cy
+        return R
+
+    R_true = euler_to_R(true_e)
+    R_est = euler_to_R(est_e)
+    # R_err = R_est^T * R_true
+    R_err = np.matmul(np.transpose(R_est, axes=(0, 2, 1)), R_true)
+    
+    # Extract error Euler angles from matrix (strictly bounds error without coordinate flip artifacts)
+    err_roll = np.arctan2(R_err[:,2,1], R_err[:,2,2])
+    err_pitch = np.arcsin(np.clip(-R_err[:,2,0], -1.0, 1.0))
+    err_yaw = np.arctan2(R_err[:,1,0], R_err[:,0,0])
+    err = np.abs(np.degrees(np.column_stack([err_roll, err_pitch, err_yaw])))
 
     fig, axs = plt.subplots(5, 1, figsize=(12, 18), sharex=True)
     
@@ -209,15 +223,11 @@ def run_demo(filter_type):
     plt.tight_layout()
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_path = os.path.join(plot_dir, f"{filter_type}_results_{timestamp}.png")
+    save_path = os.path.join(plot_dir, f"{filter_type}_{sim_mode.name.lower()}_{timestamp}.png")
     plt.savefig(save_path)
 
-    # Calculate final error in degrees
-    final_error = np.abs(true_e[-1] - est_e[-1])
-    # Handle yaw wrap-around for error calculation
-    final_error[2] = (final_error[2] + 180) % 360 - 180
-    mae = np.mean(np.abs(final_error))
-    
+    # Calculate final mean absolute error
+    mae = np.mean(err[-1])
     print(f"\nFinal State Error (Mean Absolute): {mae:.2f}°")
     print(f"Graph saved to: {save_path}")
 
@@ -227,6 +237,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Drone EKF Demo")
     parser.add_argument("--filter", type=str, choices=["aekf", "mekf"], default="aekf",
                         help="Choose the filter type (default: aekf)")
+    parser.add_argument("--sim-mode", type=str, choices=["oscillate", "const_rot"], default="oscillate",
+                        help="Choose simulation mode (default: oscillate)")
     args = parser.parse_args()
     
-    run_demo(args.filter)
+    sim_mode = SimMode.CONSTANT_ROT if args.sim_mode == "const_rot" else SimMode.OSCILLATE
+    run_demo(args.filter, sim_mode)
