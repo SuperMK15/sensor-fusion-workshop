@@ -37,15 +37,15 @@ The foundation of all estimation. Uses a discrete grid (histogram) to represent 
 - **Edit:** Constants in the `CONFIG` section of the [`1_bayes_filter/main.py`](./1_bayes_filter/main.py) code will change the behaviour of the filter.
 
 ### 2. Kalman Filter (Linear)
-- Moving from discrete grids to Continuous Gaussians.
-- **Concepts:** State Transition Matrix ($F$), Control Matrix ($B$), Kalman Gain ($K$). Read the theory in [2_kalman_filter/2_Kalman_Filter_Theory.pdf](./2_kalman_filter/2_Kalman_Filter_Theory.pdf)
+Optimal state estimation for linear systems with Gaussian noise, using recursive prediction and correction.
+- **Concepts:** Linear system modeling, State Transition Matrix ($F$), Control Matrix ($B$), Process Noise ($Q$), Measurement Matrix ($H$), Measurement Noise ($R$), Covariance Propagation, Kalman Gain ($K$), Innovation (Residual). Read the theory in [2_kalman_filter/2_Kalman_Filter_Theory.pdf](./2_kalman_filter/2_Kalman_Filter_Theory.pdf)
 - **Run:** `python 2_kalman_filter/main.py`
 - **View:** Plots in `2_kalman_filter/plots`, each run gets its own timestamped plot.
 - **Edit:** Constants in the `CONFIG` section of the [`2_kalman_filter/main.py`](./2_kalman_filter/main.py) code will change the behaviour of the filter.
 
 ### 3. Extended Kalman Filter (EKF)
-- Handling non-linear motion and sensor models using Taylor Series expansion.
-- **Concepts:** Jacobians, Linearization, Real-world noise models. Read the theory in [3_ekf/3-1_EKF_Theory.pdf](./3_ekf/3-1_EKF_Theory.pdf) and [3_ekf/3-2_MEKF_Theory.pdf](./3_ekf/3-2_MEKF_Theory.pdf)
-- **Run:** `python 3_ekf/main.py` (can pass `--filter aekf` or `--filter mekf` to switch between Additive and Multiplicative EKFs, default is AEKF)
+Nonlinear state estimation by locally linearizing system dynamics and measurements with Taylor Series and Jacobians.
+- **Concepts:** Nonlinear state transition $f(x,u)$, Nonlinear measurement model $h(x)$, Jacobians ($F_t = \frac{\partial f}{\partial x}$, $H_t = \frac{\partial h}{\partial x}$), First-order Taylor linearization, Covariance propagation, Innovation, Additive vs Multiplicative error states, Realistic sensor noise modeling. Read the theory in [3_ekf/3-1_EKF_Theory.pdf](./3_ekf/3-1_EKF_Theory.pdf) and [3_ekf/3-2_MEKF_Theory.pdf](./3_ekf/3-2_MEKF_Theory.pdf)
+- **Run:** `python 3_ekf/main.py` (can pass `--filter aekf` or `--filter mekf` to switch between Additive and Multiplicative EKFs, default is AEKF and also `--sim-mode oscillate` or `--sim-mode const_rot`, default is oscillate)
 - **View:** Plots in `3_ekf/plots`, each run get its own timestamped plot.
 - **Edit:** Constants in the `CONFIG` section of the [`3_ekf/main.py`](./3_ekf/main.py) code will change the behaviour of the filter.
