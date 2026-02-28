@@ -45,7 +45,7 @@ The foundation of all estimation. Uses a discrete grid (histogram) to represent 
 
 ### 3. Extended Kalman Filter (EKF)
 - Handling non-linear motion and sensor models using Taylor Series expansion.
-- **Concepts:** Jacobians, Linearization, Real-world noise models. Read the theory in [3_ekf/3_EKF_Theory.pdf](./3_ekf/3_EKF_Theory.pdf)
+- **Concepts:** Jacobians, Linearization, Real-world noise models. Read the theory in [3_ekf/3-1_EKF_Theory.pdf](./3_ekf/3-1_EKF_Theory.pdf) and [3_ekf/3-2_MEKF_Theory.pdf](./3_ekf/3-2_MEKF_Theory.pdf)
 - **Run:** `python 3_ekf/main.py` (can pass `--filter aekf` or `--filter mekf` to switch between Additive and Multiplicative EKFs, default is AEKF)
 - **View:** Plots in `3_ekf/plots`, each run get its own timestamped plot.
 - **Edit:** Constants in the `CONFIG` section of the [`3_ekf/main.py`](./3_ekf/main.py) code will change the behaviour of the filter.
