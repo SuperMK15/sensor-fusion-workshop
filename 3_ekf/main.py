@@ -166,6 +166,9 @@ def run_demo(filter_type, sim_mode):
     err_pitch = np.arcsin(np.clip(-R_err[:,2,0], -1.0, 1.0))
     err_yaw = np.arctan2(R_err[:,1,0], R_err[:,0,0])
     err = np.abs(np.degrees(np.column_stack([err_roll, err_pitch, err_yaw])))
+    
+    # Final MAE Calculation
+    mae = np.mean(err[-1])
 
     fig, axs = plt.subplots(5, 1, figsize=(12, 18), sharex=True)
     
@@ -219,15 +222,35 @@ def run_demo(filter_type, sim_mode):
     axs[4].set_ylabel("Normalized Field")
     axs[4].legend(loc='upper right', ncol=3)
     axs[4].grid(True, linestyle=':', alpha=0.6)
-
-    plt.tight_layout()
     
+    # --- METADATA HEADER & FOOTER ---
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Main Header
+    fig.suptitle(f"Filter: {filter_type.upper()} | Mode: {sim_mode.name} | MAE: {mae:.2f}°\nSeed: {seed} | Timestamp: {timestamp}", 
+                 fontsize=16, fontweight='bold', y=0.99)
+
+    # Sidebar/Bottom Section with Constants
+    constants_text = (
+        f"--- CONFIGURATION CONSTANTS ---\n"
+        f"TOTAL_TIME: {TOTAL_TIME}s | GYRO_DT: {GYRO_DT}s\n"
+        f"GYRO_BIAS: X: {GYRO_BIAS_X} rad/s | Y: {GYRO_BIAS_Y} rad/s | Z: {GYRO_BIAS_Z} rad/s\n"
+        f"NOISE VARS -> GYRO: {GYRO_NOISE_VAR} | ACCEL: {ACCEL_NOISE_VAR} | MAG: {MAG_NOISE_VAR} | SIM: {SIM_NOISE_VAR}\n"
+        f"UPDATE RATIOS -> ACCEL: 1:{ACCEL_RATIO} | MAG: 1:{MAG_RATIO}\n"
+        f"ROTATION RATES: {CONST_ROT_RATES if sim_mode == SimMode.CONSTANT_ROT else OSC_AMPLITUDES}"
+    )
+
+    # Use a text box at the bottom (adjust y to prevent overlap with X-axis label)
+    fig.text(0.5, 0.02, constants_text, ha='center', fontsize=10, 
+             bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray', boxstyle='round,pad=0.5'))
+
+    # Adjust layout to leave room for the header and footer
+    plt.subplots_adjust(top=0.94, bottom=0.15, hspace=0.4)
+
+    # --- SAVE PLOT ---
     save_path = os.path.join(plot_dir, f"{filter_type}_{sim_mode.name.lower()}_{timestamp}.png")
     plt.savefig(save_path)
 
     # Calculate final mean absolute error
-    mae = np.mean(err[-1])
     print(f"\nFinal State Error (Mean Absolute): {mae:.2f}°")
     print(f"Graph saved to: {save_path}")
 
